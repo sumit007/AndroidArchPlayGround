@@ -66,7 +66,7 @@ public class TasksPresenterTest {
         MockitoAnnotations.initMocks(this);
 
         // Get a reference to the class under test
-        mTasksPresenter = new TasksPresenter(mTasksRepository, mTasksView);
+        mTasksPresenter = new TasksPresenter(mTasksRepository, mTasksView, mGetTasks, mCompleteTask, mActivateTask, mClearCompleteTasks);
 
         // The presenter won't update the view unless it's active.
         when(mTasksView.isActive()).thenReturn(true);
@@ -79,7 +79,7 @@ public class TasksPresenterTest {
     @Test
     public void createPresenter_setsThePresenterToView() {
         // Get a reference to the class under test
-        mTasksPresenter = new TasksPresenter(mTasksRepository, mTasksView);
+        mTasksPresenter = new TasksPresenter(mTasksRepository, mTasksView, mGetTasks, mCompleteTask, mActivateTask, mClearCompleteTasks);
 
         // Then the presenter is set to the view
         verify(mTasksView).setPresenter(mTasksPresenter);

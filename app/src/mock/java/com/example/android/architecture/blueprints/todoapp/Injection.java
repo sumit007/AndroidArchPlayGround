@@ -24,6 +24,11 @@ import com.example.android.architecture.blueprints.todoapp.data.source.TasksData
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository;
 import com.example.android.architecture.blueprints.todoapp.data.source.local.ToDoDatabase;
 import com.example.android.architecture.blueprints.todoapp.data.source.local.TasksLocalDataSource;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.filter.FilterFactory;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.ActivateTask;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.ClearCompleteTasks;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.CompleteTask;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.GetTasks;
 import com.example.android.architecture.blueprints.todoapp.util.AppExecutors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -41,5 +46,26 @@ public class Injection {
         return TasksRepository.getInstance(FakeTasksRemoteDataSource.getInstance(),
                 TasksLocalDataSource.getInstance(new AppExecutors(),
                         database.taskDao()));
+    }
+
+
+    public static GetTasks provideGetTasks(@NonNull Context context) {
+        return new GetTasks(provideTasksRepository(context), new FilterFactory());
+    }
+
+    public static UseCaseHandler provideUseCaseHandler() {
+        return UseCaseHandler.getInstance();
+    }
+
+    public static CompleteTask provideCompleteTasks(Context context) {
+        return new CompleteTask(Injection.provideTasksRepository(context));
+    }
+
+    public static ActivateTask provideActivateTask(Context context) {
+        return new ActivateTask(Injection.provideTasksRepository(context));
+    }
+
+    public static ClearCompleteTasks provideClearCompleteTasks(Context context) {
+        return new ClearCompleteTasks(Injection.provideTasksRepository(context));
     }
 }

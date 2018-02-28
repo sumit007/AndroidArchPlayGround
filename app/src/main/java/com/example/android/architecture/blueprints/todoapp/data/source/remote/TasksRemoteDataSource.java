@@ -19,8 +19,8 @@ package com.example.android.architecture.blueprints.todoapp.data.source.remote;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 
-import com.example.android.architecture.blueprints.todoapp.data.Task;
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.model.Task;
 import com.google.common.collect.Lists;
 
 import java.util.Iterator;

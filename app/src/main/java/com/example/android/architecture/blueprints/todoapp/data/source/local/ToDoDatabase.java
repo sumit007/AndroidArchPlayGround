@@ -21,7 +21,7 @@ import android.arch.persistence.room.Room;
 import android.arch.persistence.room.RoomDatabase;
 import android.content.Context;
 
-import com.example.android.architecture.blueprints.todoapp.data.Task;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.model.Task;
 
 /**
  * The Room Database that contains the Task table.

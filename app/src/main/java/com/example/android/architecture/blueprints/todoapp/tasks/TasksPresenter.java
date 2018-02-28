@@ -19,13 +19,17 @@ package com.example.android.architecture.blueprints.todoapp.tasks;
 import android.app.Activity;
 import android.support.annotation.NonNull;
 
+import com.example.android.architecture.blueprints.todoapp.UseCase;
+import com.example.android.architecture.blueprints.todoapp.UseCaseHandler;
 import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity;
-import com.example.android.architecture.blueprints.todoapp.data.Task;
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource;
-import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.model.Task;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.ActivateTask;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.ClearCompleteTasks;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.CompleteTask;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.usecase.GetTasks;
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -36,19 +40,32 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class TasksPresenter implements TasksContract.Presenter {
 
-    private final TasksRepository mTasksRepository;
-
     private final TasksContract.View mTasksView;
+    private final GetTasks mGetTasks;
+    private final CompleteTask mCompleteTask;
+    private final ActivateTask mActivateTask;
+    private final ClearCompleteTasks mClearCompleteTasks;
 
     private TasksFilterType mCurrentFiltering = TasksFilterType.ALL_TASKS;
 
+    private final UseCaseHandler mUseCaseHandler;
     private boolean mFirstLoad = true;
 
-    public TasksPresenter(@NonNull TasksRepository tasksRepository, @NonNull TasksContract.View tasksView) {
-        mTasksRepository = checkNotNull(tasksRepository, "tasksRepository cannot be null");
+    public TasksPresenter(@NonNull UseCaseHandler useCaseHandler,
+                          @NonNull TasksContract.View tasksView, @NonNull GetTasks getTasks,
+                          @NonNull CompleteTask completeTask, @NonNull ActivateTask activateTask,
+                          @NonNull ClearCompleteTasks clearCompleteTasks) {
+        mUseCaseHandler = checkNotNull(useCaseHandler, "usecaseHandler cannot be null");
         mTasksView = checkNotNull(tasksView, "tasksView cannot be null!");
+        mGetTasks = checkNotNull(getTasks, "getTask cannot be null!");
+        mCompleteTask = checkNotNull(completeTask, "completeTask cannot be null!");
+        mActivateTask = checkNotNull(activateTask, "activateTask cannot be null!");
+        mClearCompleteTasks = checkNotNull(clearCompleteTasks,
+                "clearCompleteTasks cannot be null!");
+
 
         mTasksView.setPresenter(this);
+
     }
 
     @Override
@@ -79,47 +96,18 @@ public class TasksPresenter implements TasksContract.Presenter {
         if (showLoadingUI) {
             mTasksView.setLoadingIndicator(true);
         }
-        if (forceUpdate) {
-            mTasksRepository.refreshTasks();
-        }
+
+        GetTasks.RequestValues requestValue = new GetTasks.RequestValues(forceUpdate,
+                mCurrentFiltering);
 
         // The network request might be handled in a different thread so make sure Espresso knows
         // that the app is busy until the response is handled.
         EspressoIdlingResource.increment(); // App is busy until further notice
 
-        mTasksRepository.getTasks(new TasksDataSource.LoadTasksCallback() {
+        mUseCaseHandler.execute(mGetTasks, requestValue, new UseCase.UseCaseCallback<GetTasks.ResponseValue>() {
             @Override
-            public void onTasksLoaded(List<Task> tasks) {
-                List<Task> tasksToShow = new ArrayList<Task>();
-
-                // This callback may be called twice, once for the cache and once for loading
-                // the data from the server API, so we check before decrementing, otherwise
-                // it throws "Counter has been corrupted!" exception.
-                if (!EspressoIdlingResource.getIdlingResource().isIdleNow()) {
-                    EspressoIdlingResource.decrement(); // Set app as idle.
-                }
-
-                // We filter the tasks based on the requestType
-                for (Task task : tasks) {
-                    switch (mCurrentFiltering) {
-                        case ALL_TASKS:
-                            tasksToShow.add(task);
-                            break;
-                        case ACTIVE_TASKS:
-                            if (task.isActive()) {
-                                tasksToShow.add(task);
-                            }
-                            break;
-                        case COMPLETED_TASKS:
-                            if (task.isCompleted()) {
-                                tasksToShow.add(task);
-                            }
-                            break;
-                        default:
-                            tasksToShow.add(task);
-                            break;
-                    }
-                }
+            public void onSuccess(GetTasks.ResponseValue response) {
+                List<Task> tasks = response.getTasks();
                 // The view may not be able to handle UI updates anymore
                 if (!mTasksView.isActive()) {
                     return;
@@ -128,11 +116,11 @@ public class TasksPresenter implements TasksContract.Presenter {
                     mTasksView.setLoadingIndicator(false);
                 }
 
-                processTasks(tasksToShow);
+                processTasks(tasks);
             }
 
             @Override
-            public void onDataNotAvailable() {
+            public void onError() {
                 // The view may not be able to handle UI updates anymore
                 if (!mTasksView.isActive()) {
                     return;
@@ -196,24 +184,57 @@ public class TasksPresenter implements TasksContract.Presenter {
     @Override
     public void completeTask(@NonNull Task completedTask) {
         checkNotNull(completedTask, "completedTask cannot be null!");
-        mTasksRepository.completeTask(completedTask);
-        mTasksView.showTaskMarkedComplete();
-        loadTasks(false, false);
+
+        mUseCaseHandler.execute(mCompleteTask, new CompleteTask.RequestValues(completedTask.getId()), new UseCase.UseCaseCallback<CompleteTask.ResponseValue>() {
+            @Override
+            public void onSuccess(CompleteTask.ResponseValue response) {
+                mTasksView.showTaskMarkedComplete();
+                loadTasks(false, false);
+            }
+
+            @Override
+            public void onError() {
+                mTasksView.showLoadingTasksError();
+            }
+        });
     }
 
     @Override
     public void activateTask(@NonNull Task activeTask) {
         checkNotNull(activeTask, "activeTask cannot be null!");
-        mTasksRepository.activateTask(activeTask);
-        mTasksView.showTaskMarkedActive();
-        loadTasks(false, false);
+
+        mUseCaseHandler.execute(mActivateTask, new ActivateTask.RequestValues(activeTask.getId()), new UseCase.UseCaseCallback<ActivateTask.ResponseValue>() {
+            @Override
+            public void onSuccess(ActivateTask.ResponseValue response) {
+                mTasksView.showTaskMarkedActive();
+                loadTasks(false, false);
+            }
+
+            @Override
+            public void onError() {
+                mTasksView.showLoadingTasksError();
+            }
+        });
+
+
     }
 
     @Override
     public void clearCompletedTasks() {
-        mTasksRepository.clearCompletedTasks();
-        mTasksView.showCompletedTasksCleared();
-        loadTasks(false, false);
+
+        mUseCaseHandler.execute(mClearCompleteTasks, new ClearCompleteTasks.RequestValues(),
+                new UseCase.UseCaseCallback<ClearCompleteTasks.ResponseValue>() {
+                    @Override
+                    public void onSuccess(ClearCompleteTasks.ResponseValue response) {
+                        mTasksView.showCompletedTasksCleared();
+                        loadTasks(false, false);
+                    }
+
+                    @Override
+                    public void onError() {
+                        mTasksView.showLoadingTasksError();
+                    }
+                });
     }
 
     /**

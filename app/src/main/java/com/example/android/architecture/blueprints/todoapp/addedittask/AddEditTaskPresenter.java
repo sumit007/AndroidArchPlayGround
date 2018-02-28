@@ -19,8 +19,8 @@ package com.example.android.architecture.blueprints.todoapp.addedittask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import com.example.android.architecture.blueprints.todoapp.data.Task;
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource;
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.model.Task;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 

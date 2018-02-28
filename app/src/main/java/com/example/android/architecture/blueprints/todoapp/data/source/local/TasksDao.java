@@ -22,7 +22,8 @@ import android.arch.persistence.room.OnConflictStrategy;
 import android.arch.persistence.room.Query;
 import android.arch.persistence.room.Update;
 
-import com.example.android.architecture.blueprints.todoapp.data.Task;
+
+import com.example.android.architecture.blueprints.todoapp.tasks.domain.model.Task;
 
 import java.util.List;
 
